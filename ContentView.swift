@@ -42,6 +42,11 @@ struct ContentView: View {
                 .tabItem {
                     Label("Quotes", systemImage: "quote.bubble")
                 }
+
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person.circle")
+                }
         }
     }
 }
@@ -68,16 +73,14 @@ struct GoalsView: View {
                         ForEach(allGoals, id: \.self) { goal in
                             Text(goal)
                         }
-                        
                     }
                 }
-                
-                
+
                 Section(header: Text("Notes")) {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
                 }
-                
+
                 Section(header: Text("Summary")) {
                     Text("Goal: \(selectedGoal)")
                     if notes.isEmpty {
@@ -106,16 +109,12 @@ struct WorkoutTrackerView: View {
             Form {
                 Section(header: Text("Add Workout")) {
                     TextField("Workout name (e.g. Bench Press)", text: $workoutName)
+
                     TextField("Sets", text: $setsText)
-                    #if os(iOS)
                         .keyboardType(.numberPad)
-                    #endif
 
                     TextField("Reps", text: $repsText)
-                    #if os(iOS)
                         .keyboardType(.numberPad)
-                    #endif
-
 
                     Button("Add Workout") {
                         addWorkout()
@@ -179,10 +178,8 @@ struct NutritionTrackerView: View {
                 Section(header: Text("Add Food")) {
                     TextField("Food name (e.g. Chicken, Rice)", text: $foodName)
 
-                    TextField("Sets", text: $caloriesText)
-                    #if os(iOS)
+                    TextField("Calories (kcal)", text: $caloriesText)
                         .keyboardType(.numberPad)
-                    #endif
 
                     Button("Add Food") {
                         addFood()
@@ -231,7 +228,7 @@ struct NutritionTrackerView: View {
     }
 }
 
-// MARK: - 4. Recommendations
+// MARK: - 4. Recommendations (UPDATED)
 enum MuscleGroup: String, CaseIterable, Identifiable {
     case biceps = "Biceps"
     case chest = "Chest"
@@ -253,7 +250,7 @@ enum MuscleGroup: String, CaseIterable, Identifiable {
 }
 
 struct RecommendationsView: View {
-    @State private var selectedGoal = "Increase Strength"
+    @State private var selectedGoal = "Lose Weight"
     @State private var selectedMuscle: MuscleGroup = .biceps
 
     let goals = [
@@ -264,9 +261,67 @@ struct RecommendationsView: View {
         "Stay Healthy"
     ]
 
+    // 🔹 Goal-based exercises with approximate calories per minute
+    let goalExercises: [String: [String]] = [
+        "Lose Weight": [
+            "Running (fast): ~12 calories per minute",
+            "Jump rope: ~10 calories per minute",
+            "Cycling (moderate): ~8 calories per minute",
+            "Burpees: ~10–12 calories per minute",
+            "Swimming (laps): ~9 calories per minute"
+        ],
+        "Gain Weight": [
+            "Heavy squats (barbell)",
+            "Bench press",
+            "Deadlifts",
+            "Rows (barbell or dumbbell)",
+            "Overhead press"
+        ],
+        "Increase Strength": [
+            "Low reps, heavy squats",
+            "Deadlifts",
+            "Bench press",
+            "Pull-ups / weighted pull-ups",
+            "Overhead press"
+        ],
+        "Gain Muscle": [
+            "Squats (3–4 sets of 8–12 reps)",
+            "Bench press (3–4 sets of 8–12 reps)",
+            "Lat pulldown or pull-ups",
+            "Shoulder press",
+            "Leg press or lunges"
+        ],
+        "Stay Healthy": [
+            "Brisk walking",
+            "Light jogging",
+            "Cycling (easy pace)",
+            "Bodyweight squats",
+            "Light dumbbell exercises"
+        ]
+    ]
+
+    // 🔹 Goal-based time / frequency advice (the “quote” near bottom)
+    let goalDurationAdvice: [String: String] = [
+        "Lose Weight": "Try to exercise 30–40 minutes most days of the week to support weight loss.",
+        "Gain Weight": "Focus on 30–45 minutes of strength training 3–4 days per week, with enough food to support muscle gain.",
+        "Increase Strength": "Aim for 30–60 minutes of heavy strength training 3–5 days per week, with rest days in between.",
+        "Gain Muscle": "Try 45–60 minutes of resistance training 3–5 days per week, focusing on progressive overload.",
+        "Stay Healthy": "Move your body at least 20–30 minutes a day with light to moderate activity."
+    ]
+
+    var currentGoalExercises: [String] {
+        goalExercises[selectedGoal] ?? []
+    }
+
+    var currentDurationAdvice: String {
+        goalDurationAdvice[selectedGoal]
+            ?? "Try to move your body regularly throughout the week."
+    }
+
     var body: some View {
         NavigationView {
             Form {
+                // Pick overall goal
                 Section(header: Text("Goal")) {
                     Picker("Goal", selection: $selectedGoal) {
                         ForEach(goals, id: \.self) { goal in
@@ -275,6 +330,32 @@ struct RecommendationsView: View {
                     }
                 }
 
+                // 🔹 Exercises for that goal (includes Lose Weight with calories)
+                Section(header: Text("Best Exercises for Your Goal")) {
+                    if currentGoalExercises.isEmpty {
+                        Text("Pick a goal to see exercise ideas.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(currentGoalExercises, id: \.self) { ex in
+                            Text(ex)
+                        }
+                    }
+
+                    if selectedGoal == "Lose Weight" {
+                        Text("Calorie numbers are rough estimates and can change based on speed, body weight, and fitness level.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // 🔹 Time recommendation / “quote” section
+                Section(header: Text("Time Recommendation")) {
+                    Text(currentDurationAdvice)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+
+                // Still keep muscle group picker if you want more detailed ideas
                 Section(header: Text("Muscle Group")) {
                     Picker("Muscle", selection: $selectedMuscle) {
                         ForEach(MuscleGroup.allCases) { group in
@@ -283,16 +364,10 @@ struct RecommendationsView: View {
                     }
                 }
 
-                Section(header: Text("Recommended Exercises")) {
+                Section(header: Text("Recommended Exercises by Muscle")) {
                     ForEach(selectedMuscle.exercises, id: \.self) { ex in
                         Text(ex)
                     }
-                }
-
-                Section {
-                    Text("Tip: Pick 2–3 of these exercises and focus on good form.")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
                 }
             }
             .padding(.horizontal, 12)
@@ -383,10 +458,105 @@ struct QuotesView: View {
     }
 }
 
+// MARK: - 6. Profile
+struct ProfileView: View {
+    @State private var name = ""
+    @State private var ageText = ""
+    @State private var heightCmText = ""   // height in centimeters
+    @State private var weightKgText = ""   // weight in kilograms
+
+    // Parsed values
+    private var age: Int? {
+        Int(ageText)
+    }
+
+    private var heightMeters: Double? {
+        guard let cm = Double(heightCmText) else { return nil }
+        return cm / 100.0
+    }
+
+    private var weightKg: Double? {
+        Double(weightKgText)
+    }
+
+    // BMI calculation
+    private var bmi: Double? {
+        guard let h = heightMeters,
+              let w = weightKg,
+              h > 0 else { return nil }
+        return w / (h * h)
+    }
+
+    private var bmiCategory: String {
+        guard let b = bmi else { return "Not enough data" }
+        switch b {
+        case ..<18.5: return "Underweight"
+        case 18.5..<25: return "Normal"
+        case 25..<30: return "Overweight"
+        default: return "Obese"
+        }
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Basic Info")) {
+                    TextField("Name", text: $name)
+
+                    TextField("Age (years)", text: $ageText)
+                        .keyboardType(.numberPad)
+                }
+
+                Section(header: Text("Body Stats")) {
+                    TextField("Height (cm)", text: $heightCmText)
+                        .keyboardType(.decimalPad)
+
+                    TextField("Weight (kg)", text: $weightKgText)
+                        .keyboardType(.decimalPad)
+                }
+
+                Section(header: Text("BMI")) {
+                    if let bmiValue = bmi {
+                        Text(String(format: "BMI: %.1f", bmiValue))
+                            .font(.headline)
+                        Text("Category: \(bmiCategory)")
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Enter your height and weight to see your BMI.")
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section(header: Text("Summary")) {
+                    if name.isEmpty {
+                        Text("Add your name and details to personalize your app.")
+                            .foregroundColor(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Name: \(name)")
+                            if let age = age {
+                                Text("Age: \(age) years")
+                            }
+                            if let h = heightMeters {
+                                Text(String(format: "Height: %.0f cm", h * 100))
+                            }
+                            if let w = weightKg {
+                                Text(String(format: "Weight: %.1f kg", w))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .navigationTitle("Profile")
+        }
+    }
+}
+
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .previewDevice("iPhone 15 Pro")
     }
 }
-
